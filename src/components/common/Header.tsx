@@ -1,9 +1,11 @@
 import React from 'react';
 import { useAppState } from '../../context/StateContext';
-import { Shield, AlertTriangle, Radio, Play, RotateCcw, Clock } from 'lucide-react';
+import { Shield, AlertTriangle, Radio, Play, RotateCcw, Clock, Sun, Moon } from 'lucide-react';
 
 export const Header: React.FC<{ onOpenDemoControl: () => void }> = ({ onOpenDemoControl }) => {
   const {
+    theme,
+    toggleTheme,
     currentStep,
     selectedVessel,
     activeRouteId,
@@ -86,6 +88,15 @@ export const Header: React.FC<{ onOpenDemoControl: () => void }> = ({ onOpenDemo
       </div>
 
       <div className="header-actions">
+        <button
+          className="btn-theme-toggle"
+          onClick={toggleTheme}
+          title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+        >
+          {theme === 'light' ? <Moon size={16} /> : <Sun size={16} />}
+          <span>{theme === 'light' ? 'DARK' : 'LIGHT'}</span>
+        </button>
+
         {isVoyageActive && (
           <button className="btn-demo-trigger" onClick={onOpenDemoControl}>
             <Play size={14} /> DEMO CONTROLS

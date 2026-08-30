@@ -22,6 +22,8 @@ import {
 import { generateCandidateRoutes } from '../engine/routingEngine';
 
 interface StateContextType extends AppState {
+  theme: 'light' | 'dark';
+  toggleTheme: () => void;
   selectVessel: (vessel: Vessel) => void;
   confirmVessel: () => void;
   selectDestination: (dest: LocationPoint) => void;
@@ -41,6 +43,7 @@ interface StateContextType extends AppState {
 const StateContext = createContext<StateContextType | undefined>(undefined);
 
 export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+  const [theme, setTheme] = useState<'light' | 'dark'>('light');
   const [currentStep, setCurrentStep] = useState<StepState>('VESSEL_SELECTION');
   const [activePage, setActivePage] = useState<PageId>('dashboard');
   
@@ -65,6 +68,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const [demoModeActive, setDemoModeActive] = useState<boolean>(true);
 
   useEffect(() => {
+    document.documentElement.setAttribute('data-theme', theme);
+  }, [theme]);
+
+  useEffect(() => {
     if (selectedVessel && destination) {
       const routes = generateCandidateRoutes(
         selectedVessel,
@@ -87,6 +94,10 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
 
     return () => clearInterval(interval);
   }, [currentStep]);
+
+  const handleToggleTheme = () => {
+    setTheme((prev) => (prev === 'light' ? 'dark' : 'light'));
+  };
 
   const handleSelectVessel = (vessel: Vessel) => {
     setSelectedVessel(vessel);
@@ -214,6 +225,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   return (
     <StateContext.Provider
       value={{
+        theme,
+        toggleTheme: handleToggleTheme,
         currentStep,
         activePage,
         selectedVessel,

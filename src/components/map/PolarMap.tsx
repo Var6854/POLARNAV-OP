@@ -3,6 +3,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import './LeafletStyles.css';
 import type { Vessel, LocationPoint, Iceberg, CandidateRoute } from '../../types';
+import { useAppState } from '../../context/StateContext';
 import { Layers, Navigation } from 'lucide-react';
 
 // Override default Leaflet icon URLs to prevent bundler asset loading issues on Vercel
@@ -46,8 +47,10 @@ export const PolarMap: React.FC<PolarMapProps> = ({
   showIcebergs = true,
   showTrajectories = true
 }) => {
+  const { theme } = useAppState();
   const mapContainerRef = useRef<HTMLDivElement>(null);
   const mapInstanceRef = useRef<L.Map | null>(null);
+  const tileLayerRef = useRef<L.TileLayer | null>(null);
   const layerGroupRef = useRef<L.LayerGroup | null>(null);
 
   const [layersOpen, setLayersOpen] = useState(false);
@@ -84,6 +87,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
 
   const vesselPos = getVesselCurrentPosition();
 
+  // Map Initialization
   useEffect(() => {
     if (!mapContainerRef.current) return;
     if (mapInstanceRef.current) return;
@@ -98,10 +102,17 @@ export const PolarMap: React.FC<PolarMapProps> = ({
       attributionControl: false
     });
 
-    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
-      maxZoom: 18,
-      subdomains: 'abcd'
+    const tileUrl =
+      theme === 'light'
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+
+    const tileLayer = L.tileLayer(tileUrl, {
+      maxZoom: 16,
+      attribution: 'Esri, DeLorme, NAVTEQ'
     }).addTo(map);
+
+    tileLayerRef.current = tileLayer;
 
     L.control.zoom({ position: 'bottomright' }).addTo(map);
 
@@ -116,6 +127,17 @@ export const PolarMap: React.FC<PolarMapProps> = ({
       }
     };
   }, []);
+
+  // Update Map Tile Layer on Theme Change
+  useEffect(() => {
+    if (!tileLayerRef.current) return;
+    const tileUrl =
+      theme === 'light'
+        ? 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Light_Gray_Base/MapServer/tile/{z}/{y}/{x}'
+        : 'https://server.arcgisonline.com/ArcGIS/rest/services/Canvas/World_Dark_Gray_Base/MapServer/tile/{z}/{y}/{x}';
+
+    tileLayerRef.current.setUrl(tileUrl);
+  }, [theme]);
 
   useEffect(() => {
     const map = mapInstanceRef.current;
@@ -152,10 +174,10 @@ export const PolarMap: React.FC<PolarMapProps> = ({
           [-65.0, -58.2]
         ],
         {
-          color: '#0284c7',
+          color: theme === 'light' ? '#0284c7' : '#38bdf8',
           weight: 1.5,
-          fillColor: '#0369a1',
-          fillOpacity: 0.35,
+          fillColor: '#0284c7',
+          fillOpacity: theme === 'light' ? 0.22 : 0.35,
           dashArray: '2, 2'
         }
       );
@@ -170,10 +192,10 @@ export const PolarMap: React.FC<PolarMapProps> = ({
           [-64.1, -59.5]
         ],
         {
-          color: '#38bdf8',
+          color: theme === 'light' ? '#0284c7' : '#38bdf8',
           weight: 1,
-          fillColor: '#0284c7',
-          fillOpacity: 0.18,
+          fillColor: '#38bdf8',
+          fillOpacity: 0.15,
           dashArray: '4, 4'
         }
       );
@@ -188,7 +210,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
           [-62.8, -60.0]
         ],
         {
-          color: '#38bdf8',
+          color: theme === 'light' ? '#0284c7' : '#38bdf8',
           weight: 1,
           fillColor: '#38bdf8',
           fillOpacity: 0.08,
@@ -206,8 +228,8 @@ export const PolarMap: React.FC<PolarMapProps> = ({
           const circleRadiusMeters = (ib.hazardRadius || 5.5) * 1000;
           const hazardCircle = L.circle([ib.lat, ib.lng], {
             radius: circleRadiusMeters,
-            color: '#f43f5e',
-            fillColor: '#f43f5e',
+            color: '#e11d48',
+            fillColor: '#e11d48',
             fillOpacity: 0.28,
             weight: 2,
             className: 'hazard-heatmap-pulse'
@@ -224,8 +246,8 @@ export const PolarMap: React.FC<PolarMapProps> = ({
             ib.predictedTrajectory.forEach((pt) => {
               const trajCircle = L.circle(pt, {
                 radius: circleRadiusMeters * 0.7,
-                color: '#fbbf24',
-                fillColor: '#f43f5e',
+                color: '#d97706',
+                fillColor: '#e11d48',
                 fillOpacity: 0.16,
                 weight: 1
               });
@@ -246,10 +268,10 @@ export const PolarMap: React.FC<PolarMapProps> = ({
           [-64.2, -56.5]
         ],
         {
-          color: '#38bdf8',
+          color: '#0284c7',
           weight: 1.5,
           dashArray: '8, 8',
-          opacity: 0.7
+          opacity: 0.8
         }
       );
       isotherm.bindTooltip('Isotherm Contour: -2.0°C Sea Surface Freeze Line', { sticky: true });
@@ -271,7 +293,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
         className: 'wind-vector-icon',
         html: `
           <div class="wind-vector-box">
-            <svg class="wind-arrow" style="transform: rotate(210deg);" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#fbbf24" stroke-width="2">
+            <svg class="wind-arrow" style="transform: rotate(210deg);" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="#d97706" stroke-width="2">
               <line x1="12" y1="19" x2="12" y2="5"></line>
               <polyline points="5 12 12 5 19 12"></polyline>
             </svg>
@@ -289,9 +311,9 @@ export const PolarMap: React.FC<PolarMapProps> = ({
     if (activeLayers.visibility && vesselPos) {
       const visualRangeCircle = L.circle(vesselPos, {
         radius: 8500,
-        color: '#10b981',
-        fillColor: '#10b981',
-        fillOpacity: 0.05,
+        color: '#059669',
+        fillColor: '#059669',
+        fillOpacity: 0.06,
         weight: 1.5,
         dashArray: '4, 4'
       });
@@ -300,9 +322,9 @@ export const PolarMap: React.FC<PolarMapProps> = ({
 
       const sarRadarCircle = L.circle(vesselPos, {
         radius: 45000,
-        color: '#06b6d4',
-        fillColor: '#06b6d4',
-        fillOpacity: 0.03,
+        color: '#0284c7',
+        fillColor: '#0284c7',
+        fillOpacity: 0.04,
         weight: 1,
         dashArray: '2, 6'
       });
@@ -316,16 +338,16 @@ export const PolarMap: React.FC<PolarMapProps> = ({
         const isActive = route.id === activeRouteId;
         const color = isActive
           ? route.riskCategory === 'HIGH' || route.riskCategory === 'CRITICAL'
-            ? '#f43f5e'
-            : '#10b981'
+            ? '#e11d48'
+            : '#059669'
           : route.id === 'a'
-          ? '#eab308'
-          : '#38bdf8';
+          ? '#d97706'
+          : '#0284c7';
 
         const polyline = L.polyline(route.waypoints, {
           color,
           weight: isActive ? 5 : 2.5,
-          opacity: isActive ? 0.95 : 0.45,
+          opacity: isActive ? 0.95 : 0.6,
           dashArray: isActive ? undefined : '6, 6',
           className: isActive ? 'route-active' : ''
         });
@@ -363,7 +385,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
 
         if (activeLayers.trajectories && ib.predictedTrajectory.length > 0) {
           const trajLine = L.polyline(ib.predictedTrajectory, {
-            color: isCritical ? '#f43f5e' : '#06b6d4',
+            color: isCritical ? '#e11d48' : '#0284c7',
             weight: 2,
             dashArray: '4, 4',
             opacity: 0.85
@@ -372,8 +394,8 @@ export const PolarMap: React.FC<PolarMapProps> = ({
 
           if (ib.uncertaintyCorridor && ib.uncertaintyCorridor.length > 0) {
             const corridorPoly = L.polygon(ib.uncertaintyCorridor[0], {
-              color: isCritical ? '#f43f5e' : '#06b6d4',
-              fillColor: isCritical ? '#f43f5e' : '#06b6d4',
+              color: isCritical ? '#e11d48' : '#0284c7',
+              fillColor: isCritical ? '#e11d48' : '#0284c7',
               fillOpacity: isCritical ? 0.18 : 0.08,
               weight: 1,
               dashArray: '2, 2'
@@ -387,7 +409,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
     // 8. Origin Marker
     const originIcon = L.divIcon({
       className: 'destination-marker-icon',
-      html: `<div class="destination-flag" style="border-color:#38bdf8; color:#38bdf8;"><span style="font-size:10px; font-weight:bold;">ORG</span></div>`,
+      html: `<div class="destination-flag" style="border-color:#0284c7; color:#0284c7;"><span style="font-size:10px; font-weight:bold;">ORG</span></div>`,
       iconSize: [32, 32],
       iconAnchor: [16, 16]
     });
@@ -432,6 +454,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
     );
     layerGroup.addLayer(vesselMarker);
   }, [
+    theme,
     activeLayers,
     candidateRoutes,
     activeRouteId,
@@ -452,9 +475,9 @@ export const PolarMap: React.FC<PolarMapProps> = ({
         <button
           onClick={() => setLayersOpen(!layersOpen)}
           style={{
-            background: 'rgba(15, 23, 42, 0.9)',
-            border: '1px solid rgba(56, 189, 248, 0.4)',
-            color: '#38bdf8',
+            background: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.9)',
+            border: theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(56, 189, 248, 0.4)',
+            color: theme === 'light' ? '#0284c7' : '#38bdf8',
             padding: '6px 12px',
             borderRadius: '6px',
             cursor: 'pointer',
@@ -463,6 +486,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
             gap: '6px',
             fontSize: '12px',
             fontWeight: 600,
+            boxShadow: '0 4px 12px rgba(0,0,0,0.15)',
             backdropFilter: 'blur(8px)'
           }}
         >
@@ -473,8 +497,8 @@ export const PolarMap: React.FC<PolarMapProps> = ({
           <div
             style={{
               marginTop: '6px',
-              background: 'rgba(15, 23, 42, 0.95)',
-              border: '1px solid rgba(56, 189, 248, 0.3)',
+              background: theme === 'light' ? '#ffffff' : 'rgba(15, 23, 42, 0.95)',
+              border: theme === 'light' ? '1px solid #cbd5e1' : '1px solid rgba(56, 189, 248, 0.3)',
               borderRadius: '8px',
               padding: '12px',
               display: 'flex',
@@ -482,9 +506,9 @@ export const PolarMap: React.FC<PolarMapProps> = ({
               gap: '8px',
               width: '220px',
               fontSize: '12px',
-              color: '#e2e8f0',
+              color: theme === 'light' ? '#0f172a' : '#e2e8f0',
               backdropFilter: 'blur(12px)',
-              boxShadow: '0 10px 25px rgba(0,0,0,0.5)'
+              boxShadow: '0 10px 25px rgba(0,0,0,0.2)'
             }}
           >
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
@@ -520,7 +544,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
               SAR Trajectories
             </label>
 
-            <hr style={{ borderColor: 'rgba(255,255,255,0.1)', margin: '4px 0' }} />
+            <hr style={{ borderColor: 'rgba(0,0,0,0.1)', margin: '4px 0' }} />
 
             <label style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer' }}>
               <input
@@ -558,9 +582,9 @@ export const PolarMap: React.FC<PolarMapProps> = ({
             left: '50%',
             transform: 'translateX(-50%)',
             zIndex: 1000,
-            background: 'rgba(15, 23, 42, 0.9)',
-            border: '1px solid #10b981',
-            color: '#10b981',
+            background: theme === 'light' ? 'rgba(255, 255, 255, 0.95)' : 'rgba(15, 23, 42, 0.9)',
+            border: '1px solid #059669',
+            color: '#059669',
             padding: '8px 16px',
             borderRadius: '20px',
             fontSize: '12px',
@@ -568,7 +592,7 @@ export const PolarMap: React.FC<PolarMapProps> = ({
             display: 'flex',
             alignItems: 'center',
             gap: '8px',
-            boxShadow: '0 4px 15px rgba(16, 185, 129, 0.3)',
+            boxShadow: '0 4px 15px rgba(5, 150, 105, 0.25)',
             backdropFilter: 'blur(8px)'
           }}
         >
