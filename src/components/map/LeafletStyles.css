@@ -1,0 +1,187 @@
+/* PolarNav Dark Polar GIS Map Styling */
+.polar-map-container {
+  width: 100%;
+  height: 100%;
+  min-height: 480px;
+  position: relative;
+  background-color: #080c14;
+  border-radius: 8px;
+  overflow: hidden;
+  border: 1px solid rgba(56, 189, 248, 0.2);
+  box-shadow: inset 0 0 40px rgba(0, 0, 0, 0.8);
+}
+
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  background: #060911 !important;
+  font-family: 'Inter', -apple-system, sans-serif;
+}
+
+.vessel-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.vessel-pulse-container {
+  position: relative;
+  width: 32px;
+  height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.vessel-pulse-ring {
+  position: absolute;
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  border: 2px solid #38bdf8;
+  animation: pulse-ring 2s infinite cubic-bezier(0.215, 0.61, 0.355, 1);
+}
+
+@keyframes pulse-ring {
+  0% {
+    transform: scale(0.6);
+    opacity: 1;
+  }
+  100% {
+    transform: scale(1.8);
+    opacity: 0;
+  }
+}
+
+.vessel-boat-svg {
+  width: 24px;
+  height: 24px;
+  color: #38bdf8;
+  filter: drop-shadow(0 0 6px rgba(56, 189, 248, 0.8));
+  z-index: 2;
+}
+
+.iceberg-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.iceberg-node {
+  width: 28px;
+  height: 28px;
+  background: rgba(15, 23, 42, 0.85);
+  border: 1.5px solid #06b6d4;
+  border-radius: 6px;
+  color: #06b6d4;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 10px;
+  font-weight: 700;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.4);
+  transition: all 0.2s ease;
+}
+
+.iceberg-node.critical {
+  border-color: #f43f5e;
+  color: #f43f5e;
+  background: rgba(153, 27, 27, 0.9);
+  box-shadow: 0 0 15px rgba(244, 63, 94, 0.8);
+  animation: alert-pulse 1.2s infinite alternate;
+}
+
+@keyframes alert-pulse {
+  0% {
+    transform: scale(1);
+    box-shadow: 0 0 10px rgba(244, 63, 94, 0.6);
+  }
+  100% {
+    transform: scale(1.15);
+    box-shadow: 0 0 25px rgba(244, 63, 94, 1);
+  }
+}
+
+.leaflet-interactive.hazard-heatmap-pulse {
+  animation: heatmap-pulse 1.8s infinite alternate ease-in-out;
+}
+
+@keyframes heatmap-pulse {
+  from {
+    fill-opacity: 0.15;
+    stroke-opacity: 0.6;
+  }
+  to {
+    fill-opacity: 0.32;
+    stroke-opacity: 1;
+  }
+}
+
+.temp-badge-icon {
+  background: transparent;
+  border: none;
+}
+
+.temp-badge {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #38bdf8;
+  color: #38bdf8;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.wind-vector-icon {
+  background: transparent;
+  border: none;
+}
+
+.wind-vector-box {
+  background: rgba(15, 23, 42, 0.85);
+  border: 1px solid #fbbf24;
+  color: #fbbf24;
+  font-size: 10px;
+  font-weight: 700;
+  padding: 3px 8px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(6px);
+}
+
+.destination-marker-icon {
+  background: transparent;
+  border: none;
+}
+
+.destination-flag {
+  width: 32px;
+  height: 32px;
+  background: rgba(16, 185, 129, 0.2);
+  border: 2px dashed #10b981;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: #10b981;
+  box-shadow: 0 0 12px rgba(16, 185, 129, 0.5);
+}
+
+.leaflet-interactive.route-active {
+  stroke-dasharray: 10, 10;
+  animation: route-flow 20s linear infinite;
+}
+
+@keyframes route-flow {
+  from {
+    stroke-dashoffset: 200;
+  }
+  to {
+    stroke-dashoffset: 0;
+  }
+}
