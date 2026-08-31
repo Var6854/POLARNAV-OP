@@ -7,6 +7,7 @@ export const IcebergPage: React.FC = () => {
   const [selectedIbId, setSelectedIbId] = useState<string>('IB-042');
 
   const selectedIb = icebergs.find((ib) => ib.id === selectedIbId) || icebergs[0];
+  const isSelectedIbCritical = selectedIb?.status === 'CRITICAL';
 
   return (
     <div className="page-container iceberg-page">
@@ -21,8 +22,8 @@ export const IcebergPage: React.FC = () => {
           </div>
           <div
             style={{
-              background: 'rgba(2, 132, 199, 0.1)',
-              border: '1px solid rgba(2, 132, 199, 0.4)',
+              background: icebergEventTriggered ? 'rgba(225, 29, 72, 0.1)' : 'rgba(2, 132, 199, 0.1)',
+              border: `1px solid ${icebergEventTriggered ? '#e11d48' : 'rgba(2, 132, 199, 0.4)'}`,
               padding: '6px 12px',
               borderRadius: '20px',
               display: 'flex',
@@ -30,11 +31,11 @@ export const IcebergPage: React.FC = () => {
               gap: '8px',
               fontSize: '11px',
               fontWeight: 700,
-              color: '#0284c7'
+              color: icebergEventTriggered ? '#e11d48' : '#0284c7'
             }}
           >
             <Activity size={14} className="animate-pulse" />
-            DYNAMIC OCEAN CURRENT DRIFT TELEMETRY ACTIVE
+            {icebergEventTriggered ? '⚠ CRITICAL HAZARD DRIFT SURGE ACTIVE' : 'DYNAMIC OCEAN CURRENT DRIFT TELEMETRY ACTIVE'}
           </div>
         </div>
       </div>
@@ -64,7 +65,7 @@ export const IcebergPage: React.FC = () => {
               <tbody>
                 {icebergs.map((ib) => {
                   const isSelected = ib.id === selectedIbId;
-                  const isCritical = ib.status === 'CRITICAL' || ib.status === 'WATCH';
+                  const isCritical = ib.status === 'CRITICAL';
 
                   return (
                     <tr
@@ -85,10 +86,10 @@ export const IcebergPage: React.FC = () => {
                       <td>
                         <span
                           style={{
-                            background: isCritical ? 'rgba(225, 29, 72, 0.1)' : 'rgba(2, 132, 199, 0.1)',
+                            background: isCritical ? 'rgba(225, 29, 72, 0.12)' : 'rgba(2, 132, 199, 0.1)',
                             color: isCritical ? '#e11d48' : '#0284c7',
                             border: `1px solid ${isCritical ? '#e11d48' : 'rgba(2, 132, 199, 0.3)'}`,
-                            padding: '2px 8px',
+                            padding: '3px 8px',
                             borderRadius: '4px',
                             fontWeight: 700,
                             fontFamily: 'monospace',
@@ -123,7 +124,10 @@ export const IcebergPage: React.FC = () => {
               <div className="ib-spec-grid">
                 <div className="spec">
                   <span className="lbl">DYNAMIC DRIFT SPEED</span>
-                  <strong className="val text-cyan-400" style={{ fontFamily: 'monospace' }}>
+                  <strong
+                    className={`val ${isSelectedIbCritical ? 'text-rose-500' : 'text-cyan-400'}`}
+                    style={{ fontFamily: 'monospace' }}
+                  >
                     ⚡ {selectedIb.driftSpeed.toFixed(2)} m/s
                   </strong>
                 </div>
@@ -155,7 +159,9 @@ export const IcebergPage: React.FC = () => {
                 <span style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
                   🌊 OCEANOGRAPHIC KINETICS
                 </span>
-                Drift velocity dynamically fluctuates based on Antarctic Antarctic Coastal Current shear (80% weight) and SSW wind drag (20% weight).
+                {isSelectedIbCritical
+                  ? '⚠ CRITICAL DRIFT ACCELERATION: IB-042 drift velocity surged due to Antarctic Coastal Current shear and wind drag.'
+                  : 'Drift velocity dynamically fluctuates in normal range based on ocean currents (80% weight) and wind drag (20% weight).'}
               </div>
 
               {selectedIb.id === 'IB-042' && icebergEventTriggered && (

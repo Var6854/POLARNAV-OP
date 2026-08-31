@@ -71,7 +71,9 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Live Micro-Fluctuation of Iceberg Drift Speeds (Dynamic Antarctic Currents & Wind Dynamics)
+  // Live Micro-Fluctuation of Iceberg Drift Speeds
+  // Before Simulation: Speed fluctuates in normal range (~0.38 m/s)
+  // After Simulation Starts: IB-042 speed accelerates significantly (~0.78 m/s)
   useEffect(() => {
     const driftInterval = setInterval(() => {
       setIcebergs((prevIcebergs) =>
@@ -79,15 +81,15 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const baseSpeed =
             ib.id === 'IB-042'
               ? icebergEventTriggered
-                ? 0.62
-                : 0.54
+                ? 0.78  // Dynamic speed surge after simulation trigger!
+                : 0.38  // Normal speed before simulation trigger
               : ib.id === 'IB-019'
-              ? 0.41
-              : 0.29;
+              ? 0.32
+              : 0.24;
           
-          // Realistic dynamic current turbulence fluctuation (+/- 0.05 m/s)
-          const fluctuation = (Math.random() - 0.5) * 0.10;
-          const dynamicSpeed = Math.max(0.15, Math.min(0.95, Number((baseSpeed + fluctuation).toFixed(2))));
+          // Realistic dynamic current turbulence fluctuation (+/- 0.04 m/s)
+          const fluctuation = (Math.random() - 0.5) * 0.08;
+          const dynamicSpeed = Math.max(0.15, Math.min(0.98, Number((baseSpeed + fluctuation).toFixed(2))));
           
           return {
             ...ib,
@@ -179,8 +181,9 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIcebergEventTriggered(true);
     setAlertActive(true);
 
+    // IB-042 turns CRITICAL and accelerates drift speed to 0.78 m/s
     setIcebergs((prev) =>
-      prev.map((ib) => (ib.id === 'IB-042' ? { ...SHIFTED_IB042, driftSpeed: 0.62 } : ib))
+      prev.map((ib) => (ib.id === 'IB-042' ? { ...SHIFTED_IB042, status: 'CRITICAL', driftSpeed: 0.78 } : ib))
     );
 
     setTimeline((prev) => [
@@ -189,7 +192,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: `t-sar-${Date.now()}`,
         time: '10:30 UTC',
         title: 'NEW SAR OBSERVATION RECEIVED',
-        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Dynamic speed 0.62 m/s).',
+        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Accelerated speed 0.78 m/s).',
         type: 'warning'
       },
       {
