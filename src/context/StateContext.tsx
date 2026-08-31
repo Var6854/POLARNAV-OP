@@ -71,6 +71,35 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
+  // Live Micro-Fluctuation of Iceberg Drift Speeds (Dynamic Antarctic Currents & Wind Dynamics)
+  useEffect(() => {
+    const driftInterval = setInterval(() => {
+      setIcebergs((prevIcebergs) =>
+        prevIcebergs.map((ib) => {
+          const baseSpeed =
+            ib.id === 'IB-042'
+              ? icebergEventTriggered
+                ? 0.62
+                : 0.54
+              : ib.id === 'IB-019'
+              ? 0.41
+              : 0.29;
+          
+          // Realistic dynamic current turbulence fluctuation (+/- 0.05 m/s)
+          const fluctuation = (Math.random() - 0.5) * 0.10;
+          const dynamicSpeed = Math.max(0.15, Math.min(0.95, Number((baseSpeed + fluctuation).toFixed(2))));
+          
+          return {
+            ...ib,
+            driftSpeed: dynamicSpeed
+          };
+        })
+      );
+    }, 2000);
+
+    return () => clearInterval(driftInterval);
+  }, [icebergEventTriggered]);
+
   useEffect(() => {
     if (selectedVessel && destination) {
       const routes = generateCandidateRoutes(
@@ -151,7 +180,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setAlertActive(true);
 
     setIcebergs((prev) =>
-      prev.map((ib) => (ib.id === 'IB-042' ? SHIFTED_IB042 : ib))
+      prev.map((ib) => (ib.id === 'IB-042' ? { ...SHIFTED_IB042, driftSpeed: 0.62 } : ib))
     );
 
     setTimeline((prev) => [
@@ -160,7 +189,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: `t-sar-${Date.now()}`,
         time: '10:30 UTC',
         title: 'NEW SAR OBSERVATION RECEIVED',
-        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Drift speed 0.58 m/s).',
+        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Dynamic speed 0.62 m/s).',
         type: 'warning'
       },
       {

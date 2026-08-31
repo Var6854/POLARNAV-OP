@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { useAppState } from '../../context/StateContext';
-import { ShieldAlert, AlertTriangle, Compass, Radio } from 'lucide-react';
+import { ShieldAlert, AlertTriangle, Activity, Zap } from 'lucide-react';
 
 export const IcebergPage: React.FC = () => {
   const { icebergs, icebergEventTriggered } = useAppState();
@@ -11,18 +11,43 @@ export const IcebergPage: React.FC = () => {
   return (
     <div className="page-container iceberg-page">
       <div className="page-header-box">
-        <div className="page-title-row">
-          <ShieldAlert className="text-cyan-400" size={24} />
-          <div>
-            <h1>ICEBERG INTELLIGENCE & TRAJECTORY MONITOR</h1>
-            <p>Real-time tracked tabular icebergs, submerged keel depth profiles, and uncertainty corridors.</p>
+        <div className="page-title-row" style={{ justifyContent: 'space-between', width: '100%' }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: '14px' }}>
+            <ShieldAlert className="text-cyan-400" size={24} />
+            <div>
+              <h1>ICEBERG INTELLIGENCE & TRAJECTORY MONITOR</h1>
+              <p>Real-time tracked tabular icebergs, submerged keel depth profiles, and dynamic SAR drift kinetic streams.</p>
+            </div>
+          </div>
+          <div
+            style={{
+              background: 'rgba(2, 132, 199, 0.1)',
+              border: '1px solid rgba(2, 132, 199, 0.4)',
+              padding: '6px 12px',
+              borderRadius: '20px',
+              display: 'flex',
+              alignItems: 'center',
+              gap: '8px',
+              fontSize: '11px',
+              fontWeight: 700,
+              color: '#0284c7'
+            }}
+          >
+            <Activity size={14} className="animate-pulse" />
+            DYNAMIC OCEAN CURRENT DRIFT TELEMETRY ACTIVE
           </div>
         </div>
       </div>
 
       <div className="iceberg-layout-grid">
         <div className="iceberg-table-card">
-          <h3>TRACKED ICEBERG HAZARD REGISTRY</h3>
+          <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '12px' }}>
+            <h3>TRACKED ICEBERG HAZARD REGISTRY</h3>
+            <span style={{ fontSize: '10px', color: '#64748b', fontWeight: 600 }}>
+              <Zap size={12} className="inline text-amber-500 mr-1" />
+              Live SAR Kinetic Updates (Every 2s)
+            </span>
+          </div>
           <div className="table-responsive">
             <table className="custom-table">
               <thead>
@@ -31,7 +56,7 @@ export const IcebergPage: React.FC = () => {
                   <th>NAME</th>
                   <th>STATUS</th>
                   <th>COORDINATES</th>
-                  <th>DRIFT SPEED</th>
+                  <th>DYNAMIC DRIFT SPEED</th>
                   <th>HAZARD RADIUS</th>
                   <th>CONFIDENCE</th>
                 </tr>
@@ -57,7 +82,25 @@ export const IcebergPage: React.FC = () => {
                       <td>
                         {ib.lat.toFixed(2)}°S {Math.abs(ib.lng).toFixed(2)}°W
                       </td>
-                      <td>{ib.driftSpeed} m/s ({ib.headingLabel})</td>
+                      <td>
+                        <span
+                          style={{
+                            background: isCritical ? 'rgba(225, 29, 72, 0.1)' : 'rgba(2, 132, 199, 0.1)',
+                            color: isCritical ? '#e11d48' : '#0284c7',
+                            border: `1px solid ${isCritical ? '#e11d48' : 'rgba(2, 132, 199, 0.3)'}`,
+                            padding: '2px 8px',
+                            borderRadius: '4px',
+                            fontWeight: 700,
+                            fontFamily: 'monospace',
+                            display: 'inline-flex',
+                            alignItems: 'center',
+                            gap: '4px'
+                          }}
+                        >
+                          <Activity size={10} className="animate-pulse" />
+                          {ib.driftSpeed.toFixed(2)} m/s ({ib.headingLabel})
+                        </span>
+                      </td>
                       <td>{ib.hazardRadius} km</td>
                       <td>{ib.confidence}%</td>
                     </tr>
@@ -79,8 +122,14 @@ export const IcebergPage: React.FC = () => {
 
               <div className="ib-spec-grid">
                 <div className="spec">
+                  <span className="lbl">DYNAMIC DRIFT SPEED</span>
+                  <strong className="val text-cyan-400" style={{ fontFamily: 'monospace' }}>
+                    ⚡ {selectedIb.driftSpeed.toFixed(2)} m/s
+                  </strong>
+                </div>
+                <div className="spec">
                   <span className="lbl">KEEL DEPTH</span>
-                  <strong className="val text-cyan-400">{selectedIb.keelDepth} m</strong>
+                  <strong className="val text-amber-500">{selectedIb.keelDepth} m</strong>
                 </div>
                 <div className="spec">
                   <span className="lbl">SURFACE SIZE</span>
@@ -90,19 +139,32 @@ export const IcebergPage: React.FC = () => {
                   <span className="lbl">DRIFT HEADING</span>
                   <strong className="val">{selectedIb.driftHeading}° ({selectedIb.headingLabel})</strong>
                 </div>
-                <div className="spec">
-                  <span className="lbl">HAZARD CLEARANCE</span>
-                  <strong className="val text-amber-400">{selectedIb.hazardRadius} km</strong>
-                </div>
+              </div>
+
+              <div
+                style={{
+                  marginTop: '14px',
+                  background: 'var(--bg-dark)',
+                  border: '1px solid var(--border-card)',
+                  padding: '10px 12px',
+                  borderRadius: '8px',
+                  fontSize: '11px',
+                  color: 'var(--text-muted)'
+                }}
+              >
+                <span style={{ fontWeight: 700, color: 'var(--text-primary)', display: 'block', marginBottom: '4px' }}>
+                  🌊 OCEANOGRAPHIC KINETICS
+                </span>
+                Drift velocity dynamically fluctuates based on Antarctic Antarctic Coastal Current shear (80% weight) and SSW wind drag (20% weight).
               </div>
 
               {selectedIb.id === 'IB-042' && icebergEventTriggered && (
-                <div className="ib-alert-callout">
+                <div className="ib-alert-callout" style={{ marginTop: '12px' }}>
                   <AlertTriangle size={18} className="text-rose-400" />
                   <div>
                     <strong>CRITICAL DRIFT VECTOR SHIFT DETECTED</strong>
                     <p>
-                      Sentinel-1B pass confirmed IB-042 altered heading toward 135° SE. Submerged keel clearance on Route A is reduced to &lt;1.5 km.
+                      Sentinel-1B pass confirmed IB-042 altered heading toward 135° SE with accelerated dynamic drift speed ({selectedIb.driftSpeed.toFixed(2)} m/s). Route A clearance is reduced to &lt;1.5 km.
                     </p>
                   </div>
                 </div>
