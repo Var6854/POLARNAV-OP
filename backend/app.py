@@ -87,21 +87,21 @@ def predict_risk_endpoint():
 @app.route("/api/generate-routes", methods=["POST"])
 def generate_routes_endpoint():
     data = request.get_json() or {}
-    vessel = data.get("vessel", {})
-    origin = data.get("origin", {"name": "King George Island Base", "lat": -62.20, "lng": -58.96})
-    destination = data.get("destination", {"name": "Polar Research Station Alpha", "lat": -63.85, "lng": -57.45})
-    icebergs = data.get("icebergs", [])
-    environment = data.get("environment", {})
+    vessel = data.get("vessel") if isinstance(data.get("vessel"), dict) else {}
+    origin = data.get("origin") if isinstance(data.get("origin"), dict) else {"name": "King George Island Base", "lat": -62.20, "lng": -58.96}
+    destination = data.get("destination") if isinstance(data.get("destination"), dict) else {"name": "Polar Research Station Alpha", "lat": -63.85, "lng": -57.45}
+    icebergs = data.get("icebergs") if isinstance(data.get("icebergs"), list) else []
+    environment = data.get("environment") if isinstance(data.get("environment"), dict) else {}
     
     # 1. Run A* pathfinding to generate grid candidate routes
     raw_routes = generate_grid_routes(vessel, origin, destination, icebergs, environment)
     
     candidate_routes = []
-    cruise_speed = vessel.get("cruisingSpeed", 12.0)
-    fuel_rate = vessel.get("fuelConsumptionRate", 21.2)
-    draft = vessel.get("draft", 8.2)
-    ice_cap = vessel.get("iceCapability", "Ice-capable (PC6 Class)")
-    cap_score = 1.0 if "Heavy" in ice_cap else 0.8 if "PC5" in ice_cap or "PC6" in ice_cap else 0.6
+    cruise_speed = vessel.get("cruisingSpeed", 12.0) or 12.0
+    fuel_rate = vessel.get("fuelConsumptionRate", 21.2) or 21.2
+    draft = vessel.get("draft", 8.2) or 8.2
+    ice_cap = vessel.get("iceCapability") or "Ice-capable (PC6 Class)"
+    cap_score = 1.0 if "Heavy" in str(ice_cap) else 0.8 if "PC5" in str(ice_cap) or "PC6" in str(ice_cap) else 0.6
     
     for r_item in raw_routes:
         wps = r_item["waypoints"]
@@ -305,11 +305,17 @@ def reassess_route_endpoint():
     })
 
 def generate_routes_endpoint_logic(vessel, origin, destination, icebergs, environment):
+    vessel = vessel if isinstance(vessel, dict) else {}
+    origin = origin if isinstance(origin, dict) else {"name": "King George Island Base", "lat": -62.20, "lng": -58.96}
+    destination = destination if isinstance(destination, dict) else {"name": "Polar Research Station Alpha", "lat": -63.85, "lng": -57.45}
+    icebergs = icebergs if isinstance(icebergs, list) else []
+    environment = environment if isinstance(environment, dict) else {}
+    
     raw_routes = generate_grid_routes(vessel, origin, destination, icebergs, environment)
     candidate_routes = []
-    cruise_speed = vessel.get("cruisingSpeed", 12.0)
-    fuel_rate = vessel.get("fuelConsumptionRate", 21.2)
-    draft = vessel.get("draft", 8.2)
+    cruise_speed = vessel.get("cruisingSpeed", 12.0) or 12.0
+    fuel_rate = vessel.get("fuelConsumptionRate", 21.2) or 21.2
+    draft = vessel.get("draft", 8.2) or 8.2
     cap_score = 0.8
     
     for r_item in raw_routes:
