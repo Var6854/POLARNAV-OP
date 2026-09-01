@@ -154,9 +154,9 @@ def generate_grid_routes(vessel: dict, origin: dict, destination: dict, icebergs
     end_pt = (destination["lat"], destination["lng"])
     
     # Try A* search for candidates
-    path_a = run_astar(start_pt, end_pt, icebergs, environment, bias_corridor=None)
-    path_b = run_astar(start_pt, end_pt, icebergs, environment, bias_corridor="east")
-    path_c = run_astar(start_pt, end_pt, icebergs, environment, bias_corridor="west")
+    path_a = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor=None)
+    path_b = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="east")
+    path_c = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="west")
     
     # If A* grid paths are sparse, complement with ocean channel control points
     if len(path_a) < 3:
