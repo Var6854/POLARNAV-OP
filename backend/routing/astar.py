@@ -183,38 +183,35 @@ def generate_grid_routes(vessel: dict, origin: dict, destination: dict, icebergs
     start_pt = (origin["lat"], origin["lng"])
     end_pt = (destination["lat"], destination["lng"])
     
-    # ROUTE A — Antarctic Sound Open Ocean Channel (East of Peninsula, 100% Water)
+    # ROUTE A — Shortest Direct Ocean Channel (Antarctic Sound)
     control_a = [
         start_pt,
         [-62.45, -57.80],
-        [-62.70, -56.30],
-        [-63.20, -55.80],
-        [-63.65, -56.20],
+        [-62.80, -56.40],
+        [-63.40, -56.30],
         end_pt
     ]
-    path_a = interpolate_waypoints(control_a, 4)
+    path_a = interpolate_waypoints(control_a, 2)
 
-    # ROUTE B — Outer Eastern Deep Ocean Arc (Far East Ocean Bypass, 100% Deep Water)
+    # ROUTE B — Safer Outer Eastern Deep Ocean Arc
     control_b = [
         start_pt,
-        [-62.25, -56.50],
-        [-62.50, -54.80],
-        [-63.00, -54.40],
-        [-63.60, -55.20],
+        [-62.30, -56.20],
+        [-62.80, -54.80],
+        [-63.50, -55.40],
         end_pt
     ]
-    path_b = interpolate_waypoints(control_b, 4)
+    path_b = interpolate_waypoints(control_b, 2)
 
-    # ROUTE C — Western Outer Shelf Passage (Far West Ocean Corridor, 100% Water)
+    # ROUTE C — Western Outer Shelf Passage
     control_c = [
         start_pt,
         [-62.60, -60.20],
-        [-63.40, -61.50],
-        [-64.30, -61.00],
-        [-64.70, -58.50],
+        [-63.50, -61.20],
+        [-64.40, -59.50],
         end_pt
     ]
-    path_c = interpolate_waypoints(control_c, 4)
+    path_c = interpolate_waypoints(control_c, 2)
         
     return [
         {"id": "a", "name": "ROUTE A — SHORTEST", "tag": "Antarctic Sound Ocean Corridor", "waypoints": path_a},

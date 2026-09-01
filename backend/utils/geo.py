@@ -19,7 +19,7 @@ def point_to_route_distance_km(point: list, route_waypoints: list) -> float:
             min_dist = d
     return min_dist
 
-def interpolate_waypoints(control_points: list, points_per_segment: int = 3) -> list:
+def interpolate_waypoints(control_points: list, points_per_segment: int = 2) -> list:
     waypoints = []
     for i in range(len(control_points) - 1):
         p1 = control_points[i]
@@ -30,7 +30,26 @@ def interpolate_waypoints(control_points: list, points_per_segment: int = 3) -> 
             lng = p1[1] + (p2[1] - p1[1]) * t
             waypoints.append([round(lat, 4), round(lng, 4)])
     waypoints.append([round(control_points[-1][0], 4), round(control_points[-1][1], 4)])
-    return waypoints
+    return smooth_chaikin(waypoints, iterations=2)
+
+def smooth_chaikin(points: list, iterations: int = 2) -> list:
+    """Applies Chaikin's corner-cutting algorithm to produce a sleek, natural ocean route curve."""
+    if len(points) <= 2:
+        return points
+    
+    current = points
+    for _ in range(iterations):
+        smoothed = [current[0]]
+        for i in range(len(current) - 1):
+            p0 = current[i]
+            p1 = current[i + 1]
+            q = [round(0.75 * p0[0] + 0.25 * p1[0], 4), round(0.75 * p0[1] + 0.25 * p1[1], 4)]
+            r = [round(0.25 * p0[0] + 0.75 * p1[0], 4), round(0.25 * p0[1] + 0.75 * p1[1], 4)]
+            smoothed.append(q)
+            smoothed.append(r)
+        smoothed.append(current[-1])
+        current = smoothed
+    return current
 
 def calculate_total_route_distance_km(waypoints: list) -> int:
     total = 0.0
