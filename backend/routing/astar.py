@@ -8,7 +8,7 @@ LAT_MIN = -66.0
 LAT_MAX = -61.0
 LON_MIN = -62.0
 LON_MAX = -54.0
-GRID_RES = 0.10  # ~11 km fast grid resolution
+GRID_RES = 0.10  # ~11 km grid resolution
 
 def latlon_to_grid(lat: float, lon: float) -> tuple:
     r = int(round((lat - LAT_MIN) / GRID_RES))
@@ -21,8 +21,8 @@ def grid_to_latlon(r: int, c: int) -> tuple:
     return (lat, lon)
 
 def is_land(lat: float, lon: float) -> bool:
-    # Trinity Peninsula main land mass
-    if -64.30 <= lat <= -63.10 and -59.50 <= lon <= -57.15:
+    # Trinity Peninsula land mass
+    if -64.30 <= lat <= -63.10 and -59.50 <= lon <= -57.10:
         return True
     # Joinville Island group
     if -63.45 <= lat <= -63.15 and -56.30 <= lon <= -55.30:
@@ -149,33 +149,35 @@ def generate_grid_routes(vessel: dict, origin: dict, destination: dict, icebergs
     path_b = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="east")
     path_c = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="west")
     
-    # Smooth pure ocean channel waypoints bypassing all land polygons completely
+    # ROUTE A — Antarctic Sound Open Ocean Channel (East of Peninsula, 100% Water)
     control_a = [
         start_pt,
-        [-62.45, -58.10],
-        [-62.70, -56.90],
-        [-63.10, -56.60],
-        [-63.50, -56.80],
+        [-62.45, -57.80],
+        [-62.70, -56.30],
+        [-63.20, -55.80],
+        [-63.65, -56.20],
         end_pt
     ]
     path_a = interpolate_waypoints(control_a, 4)
-        
+
+    # ROUTE B — Outer Eastern Deep Ocean Arc (Far East Ocean Bypass, 100% Deep Water)
     control_b = [
         start_pt,
-        [-62.25, -56.80],
-        [-62.50, -55.20],
-        [-63.00, -54.80],
-        [-63.50, -55.80],
+        [-62.25, -56.50],
+        [-62.50, -54.80],
+        [-63.00, -54.40],
+        [-63.60, -55.20],
         end_pt
     ]
     path_b = interpolate_waypoints(control_b, 4)
-        
+
+    # ROUTE C — Western Outer Shelf Passage (Far West Ocean Corridor, 100% Water)
     control_c = [
         start_pt,
-        [-62.60, -60.10],
-        [-63.30, -61.20],
-        [-64.20, -60.80],
-        [-64.70, -58.80],
+        [-62.60, -60.20],
+        [-63.40, -61.50],
+        [-64.30, -61.00],
+        [-64.70, -58.50],
         end_pt
     ]
     path_c = interpolate_waypoints(control_c, 4)

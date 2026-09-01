@@ -10,6 +10,7 @@ export const RouteGeneration: React.FC = () => {
     destination,
     icebergs,
     candidateRoutes,
+    activeRouteId,
     selectInitialRoute
   } = useAppState();
 
@@ -82,7 +83,7 @@ export const RouteGeneration: React.FC = () => {
             destination={destination}
             icebergs={icebergs}
             candidateRoutes={candidateRoutes}
-            activeRouteId="a"
+            activeRouteId={activeRouteId || 'a'}
             vesselProgressPercent={0}
           />
         </div>

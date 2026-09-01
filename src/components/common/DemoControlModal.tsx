@@ -10,8 +10,15 @@ export const DemoControlModal: React.FC<{ onClose: () => void }> = ({ onClose })
     triggerIcebergTrajectoryEvent,
     reassessRoute,
     acceptReroute,
-    navigatePage
+    navigatePage,
+    candidateRoutes,
+    activeRouteId
   } = useAppState();
+
+  const activeRoute = candidateRoutes.find((r) => r.id === activeRouteId) || candidateRoutes[0];
+  const recRoute = candidateRoutes.find((r) => r.status === 'RECOMMENDED') || candidateRoutes.find((r) => r.id !== activeRouteId);
+  const activeLabel = activeRoute ? activeRoute.name : 'Route A';
+  const recLabel = recRoute ? recRoute.name : 'Route B';
 
   return (
     <div className="modal-backdrop">
@@ -31,7 +38,7 @@ export const DemoControlModal: React.FC<{ onClose: () => void }> = ({ onClose })
             <div className="step-num">STAGE 1</div>
             <div className="step-content">
               <h3>Simulate Iceberg Trajectory Change (IB-042 Shift)</h3>
-              <p>Triggers Sentinel-1 SAR orbit pass observation showing IB-042 drifting directly toward Route A.</p>
+              <p>Triggers Sentinel-1 SAR orbit pass observation showing IB-042 drifting directly toward active {activeLabel}.</p>
               <button
                 className={`btn-action ${icebergEventTriggered ? 'done' : 'trigger'}`}
                 disabled={icebergEventTriggered}
@@ -56,7 +63,7 @@ export const DemoControlModal: React.FC<{ onClose: () => void }> = ({ onClose })
           <div className="scenario-step-card">
             <div className="step-num">STAGE 2</div>
             <div className="step-content">
-              <h3>Re-evaluate Risk & Calculate Route B</h3>
+              <h3>Re-evaluate Risk & Calculate {recLabel}</h3>
               <p>Executes A* multi-criteria grid routing engine to calculate optimal low-risk bypass route.</p>
               <button
                 className={`btn-action ${rerouteCalculated ? 'done' : 'reassess'}`}
@@ -68,7 +75,7 @@ export const DemoControlModal: React.FC<{ onClose: () => void }> = ({ onClose })
               >
                 {rerouteCalculated ? (
                   <>
-                    <CheckCircle size={16} /> ROUTE B RE-CALCULATED
+                    <CheckCircle size={16} /> {recLabel} RE-CALCULATED
                   </>
                 ) : (
                   <>
@@ -82,8 +89,8 @@ export const DemoControlModal: React.FC<{ onClose: () => void }> = ({ onClose })
           <div className="scenario-step-card">
             <div className="step-num">STAGE 3</div>
             <div className="step-content">
-              <h3>Accept Reroute (Activate Route B)</h3>
-              <p>Alters INSV POLARIS active voyage navigation track to Route B (North-West Arc Bypass).</p>
+              <h3>Accept Reroute (Activate {recLabel})</h3>
+              <p>Alters INSV POLARIS active voyage navigation track to {recLabel}.</p>
               <button
                 className={`btn-action ${rerouteAccepted ? 'done' : 'accept'}`}
                 disabled={!rerouteCalculated || rerouteAccepted}
@@ -95,11 +102,11 @@ export const DemoControlModal: React.FC<{ onClose: () => void }> = ({ onClose })
               >
                 {rerouteAccepted ? (
                   <>
-                    <CheckCircle size={16} /> ROUTE B ACTIVE & VOYAGE RESTORED
+                    <CheckCircle size={16} /> {recLabel} ACTIVE & VOYAGE RESTORED
                   </>
                 ) : (
                   <>
-                    <Play size={16} /> ACCEPT REROUTE TO ROUTE B
+                    <Play size={16} /> ACCEPT REROUTE TO {recLabel}
                   </>
                 )}
               </button>
