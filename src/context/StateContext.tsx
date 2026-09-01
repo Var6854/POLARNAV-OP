@@ -1,4 +1,4 @@
-import React, { createContext, useContext, useState, useEffect } from 'react';
+import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import type {
   StepState,
   PageId,
@@ -20,9 +20,17 @@ import {
   INITIAL_TIMELINE
 } from '../data/mockData';
 import { generateCandidateRoutes } from '../engine/routingEngine';
+import {
+  fetchHealth,
+  generateRoutesApi,
+  reassessRouteApi,
+  simulateIcebergApi,
+  predictDriftApi
+} from '../services/api';
 
 interface StateContextType extends AppState {
   theme: 'light' | 'dark';
+  backendOnline: boolean;
   toggleTheme: () => void;
   selectVessel: (vessel: Vessel) => void;
   confirmVessel: () => void;
@@ -44,6 +52,7 @@ const StateContext = createContext<StateContextType | undefined>(undefined);
 
 export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
+  const [backendOnline, setBackendOnline] = useState<boolean>(false);
   const [currentStep, setCurrentStep] = useState<StepState>('VESSEL_SELECTION');
   const [activePage, setActivePage] = useState<PageId>('dashboard');
   
@@ -71,9 +80,19 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     document.documentElement.setAttribute('data-theme', theme);
   }, [theme]);
 
-  // Live Micro-Fluctuation of Iceberg Drift Speeds
-  // Before Simulation: Speed fluctuates in normal range (~0.38 m/s)
-  // After Simulation Starts: IB-042 speed accelerates significantly (~0.78 m/s)
+  // Check Flask API Backend Health on startup
+  useEffect(() => {
+    fetchHealth().then((health) => {
+      if (health && health.status === 'online') {
+        setBackendOnline(true);
+        console.log('[POLARNAV] Flask Backend Connected:', health);
+      } else {
+        setBackendOnline(false);
+      }
+    });
+  }, []);
+
+  // Live Micro-Fluctuation of Iceberg Drift Speeds via ML API or Fallback
   useEffect(() => {
     const driftInterval = setInterval(() => {
       setIcebergs((prevIcebergs) =>
@@ -81,13 +100,12 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
           const baseSpeed =
             ib.id === 'IB-042'
               ? icebergEventTriggered
-                ? 0.78  // Dynamic speed surge after simulation trigger!
-                : 0.38  // Normal speed before simulation trigger
+                ? 0.78
+                : 0.38
               : ib.id === 'IB-019'
               ? 0.32
               : 0.24;
           
-          // Realistic dynamic current turbulence fluctuation (+/- 0.04 m/s)
           const fluctuation = (Math.random() - 0.5) * 0.08;
           const dynamicSpeed = Math.max(0.15, Math.min(0.98, Number((baseSpeed + fluctuation).toFixed(2))));
           
@@ -102,18 +120,29 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(driftInterval);
   }, [icebergEventTriggered]);
 
-  useEffect(() => {
-    if (selectedVessel && destination) {
-      const routes = generateCandidateRoutes(
+  // Route Generation: Calls Python Flask API or local fallback
+  const fetchRoutes = useCallback(async () => {
+    if (!selectedVessel || !destination) return;
+    
+    const apiRoutes = await generateRoutesApi(selectedVessel, origin, destination, icebergs, environment);
+    if (apiRoutes && apiRoutes.length > 0) {
+      setCandidateRoutes(apiRoutes);
+      setBackendOnline(true);
+    } else {
+      const fallbackRoutes = generateCandidateRoutes(
         selectedVessel,
         origin,
         destination,
         icebergs,
         environment
       );
-      setCandidateRoutes(routes);
+      setCandidateRoutes(fallbackRoutes);
     }
-  }, [selectedVessel, destination, icebergs, environment, origin]);
+  }, [selectedVessel, destination, origin, icebergs, environment]);
+
+  useEffect(() => {
+    fetchRoutes();
+  }, [fetchRoutes]);
 
   useEffect(() => {
     if (currentStep !== 'VOYAGE_ACTIVE') return;
@@ -175,16 +204,24 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setActivePage(page);
   };
 
-  const handleTriggerIcebergTrajectoryEvent = () => {
+  const handleTriggerIcebergTrajectoryEvent = async () => {
     if (icebergEventTriggered) return;
 
     setIcebergEventTriggered(true);
     setAlertActive(true);
 
-    // IB-042 turns CRITICAL and accelerates drift speed to 0.78 m/s
-    setIcebergs((prev) =>
-      prev.map((ib) => (ib.id === 'IB-042' ? { ...SHIFTED_IB042, status: 'CRITICAL', driftSpeed: 0.78 } : ib))
-    );
+    // Call Python Flask ML Simulation API
+    const simRes = await simulateIcebergApi('IB-042');
+    if (simRes && simRes.iceberg) {
+      setIcebergs((prev) =>
+        prev.map((ib) => (ib.id === 'IB-042' ? { ...simRes.iceberg } : ib))
+      );
+      setBackendOnline(true);
+    } else {
+      setIcebergs((prev) =>
+        prev.map((ib) => (ib.id === 'IB-042' ? { ...SHIFTED_IB042, status: 'CRITICAL', driftSpeed: 0.78 } : ib))
+      );
+    }
 
     setTimeline((prev) => [
       ...prev,
@@ -192,7 +229,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: `t-sar-${Date.now()}`,
         time: '10:30 UTC',
         title: 'NEW SAR OBSERVATION RECEIVED',
-        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Accelerated speed 0.78 m/s).',
+        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Random Forest Predicted Speed 0.67 m/s).',
         type: 'warning'
       },
       {
@@ -205,8 +242,15 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     ]);
   };
 
-  const handleReassessRoute = () => {
+  const handleReassessRoute = async () => {
     setRerouteCalculated(true);
+
+    // Call Python Flask Reassess API
+    const reassessRes = await reassessRouteApi(selectedVessel, origin, destination, icebergs, environment);
+    if (reassessRes && reassessRes.routes) {
+      setCandidateRoutes(reassessRes.routes);
+      setBackendOnline(true);
+    }
 
     setTimeline((prev) => [
       ...prev,
@@ -252,12 +296,14 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setRerouteAccepted(false);
     setTimeline(INITIAL_TIMELINE);
     setSimulationTimeMinutes(142);
+    fetchRoutes();
   };
 
   return (
     <StateContext.Provider
       value={{
         theme,
+        backendOnline,
         toggleTheme: handleToggleTheme,
         currentStep,
         activePage,

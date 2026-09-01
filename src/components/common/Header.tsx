@@ -5,6 +5,7 @@ import { Shield, AlertTriangle, Radio, Play, RotateCcw, Clock, Sun, Moon } from 
 export const Header: React.FC<{ onOpenDemoControl: () => void }> = ({ onOpenDemoControl }) => {
   const {
     theme,
+    backendOnline,
     toggleTheme,
     currentStep,
     selectedVessel,
@@ -84,6 +85,16 @@ export const Header: React.FC<{ onOpenDemoControl: () => void }> = ({ onOpenDemo
             <Clock size={12} className="inline mr-1 text-cyan-400" />
             {formatSimTime(simulationTimeMinutes)}
           </strong>
+        </div>
+
+        <div className="status-divider" />
+
+        <div className="status-item">
+          <span className="status-label">ML BACKEND</span>
+          <span className={`status-badge ${backendOnline ? 'badge-ok' : 'badge-warning'}`}>
+            <Radio size={12} className={backendOnline ? 'animate-pulse' : ''} />
+            {backendOnline ? 'FLASK ML: ONLINE' : 'FLASK ML: LOCAL'}
+          </span>
         </div>
       </div>
 
