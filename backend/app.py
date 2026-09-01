@@ -29,6 +29,24 @@ with app.app_context():
     load_drift_model()
     load_risk_model()
 
+@app.route("/", methods=["GET"])
+def index_route():
+    return jsonify({
+        "status": "online",
+        "service": "POLARNAV 2.0 Navigation Intelligence Backend API",
+        "documentation": "https://github.com/Var6854/POLARNAV-OP",
+        "endpoints": [
+            "/api/health",
+            "/api/classify-ice",
+            "/api/predict-drift",
+            "/api/predict-risk",
+            "/api/generate-routes",
+            "/api/reassess-route",
+            "/api/simulate-iceberg",
+            "/api/mcda-rank"
+        ]
+    })
+
 @app.route("/api/health", methods=["GET"])
 def health_check():
     clf_ok = load_classifier() is not None
