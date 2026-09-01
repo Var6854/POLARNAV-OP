@@ -21,8 +21,14 @@ export const AlertsPage: React.FC = () => {
     navigatePage
   } = useAppState();
 
-  const routeA = candidateRoutes.find((r) => r.id === 'a') || candidateRoutes[0];
-  const routeB = candidateRoutes.find((r) => r.id === 'b') || candidateRoutes[1];
+  const activeRoute = candidateRoutes.find((r) => r.id === activeRouteId) || candidateRoutes[0];
+  const recommendedRoute =
+    candidateRoutes.find((r) => r.status === 'RECOMMENDED') ||
+    candidateRoutes.find((r) => r.id !== activeRouteId) ||
+    candidateRoutes[1];
+
+  const activeName = activeRoute ? activeRoute.name : 'ACTIVE ROUTE';
+  const recName = recommendedRoute ? recommendedRoute.name : 'RECOMMENDED ALTERNATIVE';
 
   return (
     <div className="page-container alerts-page">
@@ -55,26 +61,28 @@ export const AlertsPage: React.FC = () => {
                 <span>CRITICAL NAVIGATION ADVISORY #SAR-9042</span>
               </div>
 
-              <h2>IB-042 TRAJECTORY ALTERATION — ROUTE A HAZARD</h2>
+              <h2>IB-042 TRAJECTORY ALTERATION — {activeName} HAZARD</h2>
 
               <div className="advisory-explanation-box">
                 <p>
                   <strong>SAR INTELLIGENCE SUMMARY:</strong> Sentinel-1B high-resolution pass at 10:30 UTC detected IB-042 shifting heading to 135° SE with an accelerated drift speed of 0.58 m/s.
                 </p>
                 <p>
-                  <strong>HAZARD IMPACT:</strong> Submerged keel depth profile (148 m) directly encroaches upon Route A corridor. Estimated clearance reduced to &lt;1.5 km.
+                  <strong>HAZARD IMPACT:</strong> Submerged keel depth profile (148 m) directly encroaches upon {activeName} corridor. Estimated clearance reduced to &lt;1.5 km.
                 </p>
               </div>
 
               <div className="route-comparison-table">
                 <div className="comp-col current">
                   <span className="col-lbl">CURRENT ACTIVE ROUTE</span>
-                  <h3>{routeA?.name}</h3>
-                  <div className="risk-tag high">HIGH RISK ({routeA?.riskScore}/100)</div>
+                  <h3>{activeRoute?.name}</h3>
+                  <div className={`risk-tag ${activeRoute?.riskCategory === 'HIGH' || activeRoute?.riskCategory === 'CRITICAL' ? 'high' : 'low'}`}>
+                    {activeRoute?.riskCategory} RISK ({activeRoute?.riskScore}/100)
+                  </div>
                   <ul className="comp-features">
-                    <li>Clearance: &lt;1.5 km (Hazard Violation)</li>
-                    <li>Status: AVOID / CRITICAL EXPOSURE</li>
-                    <li>Distance: {routeA?.distanceKm} km</li>
+                    <li>Clearance: {activeRoute?.riskCategory === 'HIGH' ? '<1.5 km (Hazard Violation)' : '>25 km (Clear Ocean)'}</li>
+                    <li>Status: {activeRoute?.status}</li>
+                    <li>Distance: {activeRoute?.distanceKm} km</li>
                   </ul>
                 </div>
 
@@ -82,12 +90,12 @@ export const AlertsPage: React.FC = () => {
 
                 <div className="comp-col recommended">
                   <span className="col-lbl">RECOMMENDED ALTERNATIVE</span>
-                  <h3>{routeB?.name}</h3>
-                  <div className="risk-tag low">LOW RISK ({routeB?.riskScore}/100)</div>
+                  <h3>{recommendedRoute?.name}</h3>
+                  <div className="risk-tag low">LOW RISK ({recommendedRoute?.riskScore}/100)</div>
                   <ul className="comp-features">
                     <li>Clearance: &gt;28.0 km (Safe Ocean Water)</li>
-                    <li>Status: RECOMMENDED BY A* ENGINE</li>
-                    <li>Distance: {routeB?.distanceKm} km (+18 km delta)</li>
+                    <li>Status: {recommendedRoute?.status} BY A* ENGINE</li>
+                    <li>Distance: {recommendedRoute?.distanceKm} km (+{Math.max(0, (recommendedRoute?.distanceKm || 0) - (activeRoute?.distanceKm || 0))} km delta)</li>
                   </ul>
                 </div>
               </div>
@@ -95,16 +103,16 @@ export const AlertsPage: React.FC = () => {
               <div className="advisory-actions-bar">
                 {!rerouteCalculated ? (
                   <button className="btn-action-glow reassess" onClick={reassessRoute}>
-                    <RefreshCw size={16} /> RE-EVALUATE RISKS & GENERATE ROUTE B
+                    <RefreshCw size={16} /> RE-EVALUATE RISKS & GENERATE {recName}
                   </button>
                 ) : !rerouteAccepted ? (
                   <button className="btn-action-glow accept" onClick={acceptReroute}>
-                    <CheckCircle2 size={16} /> ACCEPT REROUTE TO ROUTE B
+                    <CheckCircle2 size={16} /> ACCEPT REROUTE TO {recName}
                   </button>
                 ) : (
                   <div className="accepted-success-banner">
                     <CheckCircle2 size={20} className="text-emerald-400" />
-                    <strong>OPERATOR ACCEPTED REROUTE — ROUTE B ACTIVE ON INSV POLARIS</strong>
+                    <strong>OPERATOR ACCEPTED REROUTE — {activeRoute?.name} ACTIVE ON INSV POLARIS</strong>
                   </div>
                 )}
               </div>
