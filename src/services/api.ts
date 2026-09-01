@@ -5,7 +5,7 @@ const getApiBaseUrl = () => {
   if (typeof window !== 'undefined' && window.location.hostname === 'localhost') {
     return 'http://localhost:5000';
   }
-  return '';
+  return 'https://polarnav-op-api.onrender.com';
 };
 
 const API_BASE_URL = getApiBaseUrl();
@@ -23,9 +23,6 @@ export interface HealthCheckResponse {
 
 export async function fetchHealth(): Promise<HealthCheckResponse | null> {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/health`, {
       method: 'GET',
       headers: { 'Content-Type': 'application/json' }
@@ -42,9 +39,6 @@ export async function fetchHealth(): Promise<HealthCheckResponse | null> {
 
 export async function predictDriftApi(iceberg: Partial<Iceberg>, environment: Partial<EnvironmentalState>) {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/predict-drift`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -62,9 +56,6 @@ export async function predictDriftApi(iceberg: Partial<Iceberg>, environment: Pa
 
 export async function predictRiskApi(params: Record<string, any>) {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/predict-risk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -82,9 +73,6 @@ export async function predictRiskApi(params: Record<string, any>) {
 
 export async function classifyIceApi(features: Record<string, any>) {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/classify-ice`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -108,9 +96,6 @@ export async function generateRoutesApi(
   environment: EnvironmentalState
 ): Promise<CandidateRoute[] | null> {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/generate-routes`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -134,9 +119,6 @@ export async function reassessRouteApi(
   environment: EnvironmentalState
 ) {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/reassess-route`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -154,9 +136,6 @@ export async function reassessRouteApi(
 
 export async function simulateIcebergApi(icebergId: string = 'IB-042') {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/simulate-iceberg`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -174,9 +153,6 @@ export async function simulateIcebergApi(icebergId: string = 'IB-042') {
 
 export async function mcdaRankApi(routes: CandidateRoute[], weights?: Record<string, number>) {
   try {
-    if (!API_BASE_URL && typeof window !== 'undefined' && window.location.hostname !== 'localhost') {
-      return null;
-    }
     const response = await fetch(`${API_BASE_URL}/api/mcda-rank`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
