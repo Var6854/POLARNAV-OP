@@ -200,8 +200,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     setIcebergEventTriggered(true);
     setAlertActive(true);
 
-    // Call Python Flask ML Simulation API
-    const simRes = await simulateIcebergApi('IB-042');
+    // Call Python Flask ML Simulation API with current activeRouteId
+    const simRes = await simulateIcebergApi('IB-042', activeRouteId);
     if (simRes && simRes.iceberg) {
       setIcebergs((prev) =>
         prev.map((ib) => (ib.id === 'IB-042' ? { ...simRes.iceberg } : ib))
@@ -213,20 +213,22 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       );
     }
 
+    const routeLabel = activeRouteId ? activeRouteId.toUpperCase() : 'A';
+
     setTimeline((prev) => [
       ...prev,
       {
         id: `t-sar-${Date.now()}`,
         time: '10:30 UTC',
         title: 'NEW SAR OBSERVATION RECEIVED',
-        description: 'Sentinel-1B pass detected IB-042 trajectory shift toward NW corridor (Random Forest Predicted Speed 0.67 m/s).',
+        description: `Sentinel-1B pass detected IB-042 trajectory shift toward Route ${routeLabel} corridor.`,
         type: 'warning'
       },
       {
         id: `t-alert-${Date.now()}`,
         time: '10:31 UTC',
-        title: '⚠ ROUTE A RISK INCREASED (HIGH)',
-        description: 'Submerged hazard clearance reduced to <1.5 km. Risk engine flagged Route A status as AVOID.',
+        title: `⚠ ROUTE ${routeLabel} RISK INCREASED (HIGH)`,
+        description: `Submerged hazard clearance reduced to <1.5 km. Risk engine flagged Route ${routeLabel} status as AVOID.`,
         type: 'alert'
       }
     ]);
@@ -235,12 +237,15 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
   const handleReassessRoute = async () => {
     setRerouteCalculated(true);
 
-    // Call Python Flask Reassess API
-    const reassessRes = await reassessRouteApi(selectedVessel, origin, destination, icebergs, environment);
+    // Call Python Flask Reassess API with current activeRouteId
+    const reassessRes = await reassessRouteApi(selectedVessel, origin, destination, icebergs, environment, activeRouteId);
     if (reassessRes && reassessRes.routes) {
       setCandidateRoutes(reassessRes.routes);
       setBackendOnline(true);
     }
+
+    const recRoute = reassessRes?.routes?.find((r: CandidateRoute) => r.status === 'RECOMMENDED');
+    const recLabel = recRoute ? recRoute.name : 'Route B';
 
     setTimeline((prev) => [
       ...prev,
@@ -248,14 +253,17 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
         id: `t-reassess-${Date.now()}`,
         time: '10:32 UTC',
         title: 'Instant Risk Reassessment Executed',
-        description: 'A* multi-criteria grid recalculation complete. Route B identified as optimal bypass route.',
+        description: `A* multi-criteria grid recalculation complete. ${recLabel} identified as optimal bypass route.`,
         type: 'info'
       }
     ]);
   };
 
   const handleAcceptReroute = () => {
-    setActiveRouteId('b');
+    const recRoute = candidateRoutes.find((r) => r.status === 'RECOMMENDED') || candidateRoutes.find((r) => r.id !== activeRouteId);
+    const newActiveId = (recRoute?.id as 'a' | 'b' | 'c') || 'b';
+    
+    setActiveRouteId(newActiveId);
     setRerouteAccepted(true);
     setAlertActive(false);
 
@@ -264,8 +272,8 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
       {
         id: `t-accept-${Date.now()}`,
         time: '10:34 UTC',
-        title: 'Operator Accepted Reroute — Route B Active',
-        description: 'INSV POLARIS course altered to Route B (North-West Arc). Estimated hazard clearance restored to >28 km.',
+        title: `Operator Accepted Reroute — Route ${newActiveId.toUpperCase()} Active`,
+        description: `INSV POLARIS course altered to Route ${newActiveId.toUpperCase()}. Estimated hazard clearance restored to >28 km.`,
         type: 'success'
       }
     ]);

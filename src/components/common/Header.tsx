@@ -48,7 +48,7 @@ export const Header: React.FC<{ onOpenDemoControl: () => void }> = ({ onOpenDemo
         <div className="status-item">
           <span className="status-label">ACTIVE ROUTE</span>
           <strong className="status-value">
-            {activeRoute ? `${activeRoute.name} (${activeRoute.distanceKm} km)` : 'CONFIGURING'}
+            {isVoyageActive && activeRoute ? `${activeRoute.name} (${activeRoute.distanceKm} km)` : 'NONE (CONFIGURING)'}
           </strong>
         </div>
 

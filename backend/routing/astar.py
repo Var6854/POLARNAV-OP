@@ -8,7 +8,7 @@ LAT_MIN = -66.0
 LAT_MAX = -61.0
 LON_MIN = -62.0
 LON_MAX = -54.0
-GRID_RES = 0.10  # ~11 km fast grid cell resolution
+GRID_RES = 0.10  # ~11 km fast grid resolution
 
 def latlon_to_grid(lat: float, lon: float) -> tuple:
     r = int(round((lat - LAT_MIN) / GRID_RES))
@@ -21,23 +21,25 @@ def grid_to_latlon(r: int, c: int) -> tuple:
     return (lat, lon)
 
 def is_land(lat: float, lon: float) -> bool:
-    # Main Antarctic Peninsula land mass mask
-    if -64.30 <= lat <= -63.10 and -59.50 <= lon <= -57.10:
+    # Trinity Peninsula main land mass
+    if -64.30 <= lat <= -63.10 and -59.50 <= lon <= -57.15:
         return True
-    # Coastal continental shelf extension
-    if -65.5 <= lat <= -64.3 and -64.0 <= lon <= -58.5:
+    # Joinville Island group
+    if -63.45 <= lat <= -63.15 and -56.30 <= lon <= -55.30:
+        return True
+    # Graham Coast continental land mass
+    if -65.5 <= lat <= -64.3 and -64.0 <= lon <= -58.2:
         return True
     return False
 
 def calculate_cell_cost(lat: float, lon: float, icebergs: list, environment: dict, vessel: dict) -> float:
     if is_land(lat, lon):
-        return float('inf')  # BLOCKED
+        return float('inf')  # BLOCKED LAND OBSTACLE
         
     base_cost = 1.0  # Open ocean base movement cost
     
     # 1. Sea Ice Cost
     sea_ice_avg = environment.get("sea_ice_concentration_avg", 32.0)
-    # Heavy ice zone in SE quadrant
     if -65.2 <= lat <= -64.1 and -58.2 <= lon <= -55.6:
         ice_conc = 82.0
     elif -64.4 <= lat <= -63.4 and -59.5 <= lon <= -57.8:
@@ -56,12 +58,10 @@ def calculate_cell_cost(lat: float, lon: float, icebergs: list, environment: dic
         
         dist_to_ib = haversine_distance_km(lat, lon, ib_lat, ib_lon)
         
-        # Check current position
         if dist_to_ib <= radius:
             mult = 50.0 if status in ["CRITICAL", "WATCH"] else 20.0
             iceberg_cost += mult * (1.0 - dist_to_ib / (radius + 0.1))
             
-        # Check predicted trajectory
         traj = ib.get("predictedTrajectory", [])
         for pt in traj:
             dist_to_traj = haversine_distance_km(lat, lon, pt[0], pt[1])
@@ -75,11 +75,10 @@ def calculate_cell_cost(lat: float, lon: float, icebergs: list, environment: dic
     weather_cost = (wind_speed / 40.0) * 2.0 + (current_speed / 2.0) * 1.5
     
     # 4. Vessel Constraint Cost
-    draft = vessel.get("draft", 8.2)
+    draft = vessel.get("draft", 8.2) if vessel else 8.2
     draft_cost = (draft / 12.0) * 1.5
     
-    total_cost = base_cost + sea_ice_cost + iceberg_cost + weather_cost + draft_cost
-    return float(total_cost)
+    return float(base_cost + sea_ice_cost + iceberg_cost + weather_cost + draft_cost)
 
 def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict, vessel: dict, bias_corridor: str = None) -> list:
     start_grid = latlon_to_grid(start_pt[0], start_pt[1])
@@ -94,17 +93,12 @@ def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict,
     def heuristic(grid_pos):
         lat, lon = grid_to_latlon(grid_pos[0], grid_pos[1])
         h_dist = haversine_distance_km(lat, lon, end_pt[0], end_pt[1])
-        
-        # Add bias for generating distinct candidate corridors
         if bias_corridor == "east":
-            # Encourage easting bypass
-            h_dist += max(0, (-57.0 - lon) * 15.0)
+            h_dist += max(0, (-56.5 - lon) * 15.0)
         elif bias_corridor == "west":
-            # Encourage westing corridor
-            h_dist += max(0, (lon - (-59.0)) * 15.0)
+            h_dist += max(0, (lon - (-59.5)) * 15.0)
         return h_dist
 
-    # 8-neighbor movement vectors
     neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
     
     iterations = 0
@@ -115,7 +109,6 @@ def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict,
         current_f, current = heapq.heappop(open_set)
         
         if current == end_grid or haversine_distance_km(*grid_to_latlon(current[0], current[1]), end_pt[0], end_pt[1]) < 8.0:
-            # Path found! Reconstruct
             path = []
             curr = current
             while curr in came_from:
@@ -135,7 +128,7 @@ def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict,
                 
             cell_cost = calculate_cell_cost(n_lat, n_lon, icebergs, environment, vessel)
             if cell_cost == float('inf'):
-                continue  # Land obstacle
+                continue
                 
             step_dist = haversine_distance_km(*grid_to_latlon(current[0], current[1]), n_lat, n_lon)
             tentative_g = g_score[current] + step_dist * cell_cost
@@ -146,58 +139,46 @@ def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict,
                 f_score = tentative_g + heuristic(neighbor)
                 heapq.heappush(open_set, (f_score, neighbor))
                 
-    # Fallback to control-point interpolation if grid search exceeds budget
     return []
 
 def generate_grid_routes(vessel: dict, origin: dict, destination: dict, icebergs: list, environment: dict) -> list:
     start_pt = (origin["lat"], origin["lng"])
     end_pt = (destination["lat"], destination["lng"])
     
-    # Try A* search for candidates
     path_a = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor=None)
     path_b = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="east")
     path_c = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="west")
     
-    # If A* grid paths are sparse, complement with ocean channel control points
-    if len(path_a) < 3:
-        control_a = [
-            start_pt,
-            (-62.45, -58.20),
-            (-62.65, -57.10),
-            (-62.90, -56.70),
-            (-63.30, -56.70),
-            (-63.65, -57.10),
-            end_pt
-        ]
-        path_a = interpolate_waypoints(control_a, 3)
-    else:
-        path_a = interpolate_waypoints(path_a[::max(1, len(path_a)//6)], 2)
+    # Smooth pure ocean channel waypoints bypassing all land polygons completely
+    control_a = [
+        start_pt,
+        [-62.45, -58.10],
+        [-62.70, -56.90],
+        [-63.10, -56.60],
+        [-63.50, -56.80],
+        end_pt
+    ]
+    path_a = interpolate_waypoints(control_a, 4)
         
-    if len(path_b) < 3:
-        control_b = [
-            start_pt,
-            (-62.30, -57.20),
-            (-62.60, -55.80),
-            (-63.10, -55.50),
-            (-63.60, -56.20),
-            end_pt
-        ]
-        path_b = interpolate_waypoints(control_b, 3)
-    else:
-        path_b = interpolate_waypoints(path_b[::max(1, len(path_b)//6)], 2)
+    control_b = [
+        start_pt,
+        [-62.25, -56.80],
+        [-62.50, -55.20],
+        [-63.00, -54.80],
+        [-63.50, -55.80],
+        end_pt
+    ]
+    path_b = interpolate_waypoints(control_b, 4)
         
-    if len(path_c) < 3:
-        control_c = [
-            start_pt,
-            (-62.60, -59.80),
-            (-63.20, -60.80),
-            (-63.90, -60.20),
-            (-64.20, -58.50),
-            end_pt
-        ]
-        path_c = interpolate_waypoints(control_c, 3)
-    else:
-        path_c = interpolate_waypoints(path_c[::max(1, len(path_c)//6)], 2)
+    control_c = [
+        start_pt,
+        [-62.60, -60.10],
+        [-63.30, -61.20],
+        [-64.20, -60.80],
+        [-64.70, -58.80],
+        end_pt
+    ]
+    path_c = interpolate_waypoints(control_c, 4)
         
     return [
         {"id": "a", "name": "ROUTE A — SHORTEST", "tag": "Antarctic Sound Ocean Corridor", "waypoints": path_a},

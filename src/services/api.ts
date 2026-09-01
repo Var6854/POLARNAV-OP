@@ -116,13 +116,14 @@ export async function reassessRouteApi(
   origin: LocationPoint,
   destination: LocationPoint | null,
   icebergs: Iceberg[],
-  environment: EnvironmentalState
+  environment: EnvironmentalState,
+  activeRouteId: string = 'a'
 ) {
   try {
     const response = await fetch(`${API_BASE_URL}/api/reassess-route`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ vessel, origin, destination, icebergs, environment })
+      body: JSON.stringify({ vessel, origin, destination, icebergs, environment, active_route_id: activeRouteId })
     });
     if (!response.ok) return null;
     const contentType = response.headers.get('content-type');
@@ -134,12 +135,12 @@ export async function reassessRouteApi(
   }
 }
 
-export async function simulateIcebergApi(icebergId: string = 'IB-042') {
+export async function simulateIcebergApi(icebergId: string = 'IB-042', activeRouteId: string = 'a') {
   try {
     const response = await fetch(`${API_BASE_URL}/api/simulate-iceberg`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ iceberg_id: icebergId })
+      body: JSON.stringify({ iceberg_id: icebergId, active_route_id: activeRouteId })
     });
     if (!response.ok) return null;
     const contentType = response.headers.get('content-type');

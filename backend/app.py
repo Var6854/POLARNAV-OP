@@ -179,8 +179,8 @@ def generate_routes_endpoint():
 def simulate_iceberg_endpoint():
     data = request.get_json() or {}
     iceberg_id = data.get("iceberg_id", "IB-042")
+    active_route_id = data.get("active_route_id", "a")
     
-    # Simulate new satellite SAR observation & environmental shift
     altered_env = {
         "wind_speed_knots": 32.0,
         "wind_direction": "SE",
@@ -198,44 +198,51 @@ def simulate_iceberg_endpoint():
         "drift_heading": 220.0
     }
     
-    # Run Random Forest Drift Model
     drift_res = predict_drift_speed(ib_input, altered_env)
     pred_speed = drift_res["predicted_drift_speed"]
     
-    # IB-042 shifted state
+    # Target shift position based on active route
+    if active_route_id == "b":
+        shift_lat, shift_lng = -62.60, -55.80
+        traj = [[-62.60, -55.80], [-62.80, -55.70], [-63.10, -55.60], [-63.50, -55.90]]
+        heading_lbl = "SE (DIRECT ROUTE B INTERSECTION)"
+    elif active_route_id == "c":
+        shift_lat, shift_lng = -63.30, -61.20
+        traj = [[-63.30, -61.20], [-63.60, -61.00], [-63.90, -60.80], [-64.20, -60.50]]
+        heading_lbl = "SW (DIRECT ROUTE C INTERSECTION)"
+    else: # Route A default
+        shift_lat, shift_lng = -62.90, -56.70
+        traj = [[-62.90, -56.70], [-63.10, -56.70], [-63.30, -56.70], [-63.50, -56.90]]
+        heading_lbl = "S (DIRECT ROUTE A INTERSECTION)"
+        
     shifted_ib = {
         "id": "IB-042",
         "name": "IB-042 (Tabular)",
         "status": "CRITICAL",
-        "lat": -62.90,
-        "lng": -56.70,
+        "lat": shift_lat,
+        "lng": shift_lng,
         "estimatedSize": 1.8,
         "driftSpeed": pred_speed if pred_speed > 0.5 else 0.78,
         "driftHeading": 180,
-        "headingLabel": "S (DIRECT ROUTE A INTERSECTION)",
+        "headingLabel": heading_lbl,
         "source": "Sentinel-1 SAR High-Res (Updated)",
         "confidence": 89,
         "keelDepth": 148,
         "lastObserved": "Just now (New Orbit Pass)",
         "historicalTrack": [
-            [-62.30, -57.30],
-            [-62.50, -57.00],
-            [-62.70, -56.85],
-            [-62.90, -56.70]
+            [round(shift_lat + 0.6, 2), round(shift_lng - 0.6, 2)],
+            [round(shift_lat + 0.4, 2), round(shift_lng - 0.3, 2)],
+            [round(shift_lat + 0.2, 2), round(shift_lng - 0.15, 2)],
+            [shift_lat, shift_lng]
         ],
-        "predictedTrajectory": [
-            [-62.90, -56.70],
-            [-63.10, -56.70],
-            [-63.30, -56.70],
-            [-63.50, -56.90]
-        ],
+        "predictedTrajectory": traj,
         "uncertaintyCorridor": [
             [
-                [-62.90, -56.70],
-                [-62.80, -56.55],
-                [-63.10, -56.45],
-                [-63.55, -56.65],
-                [-63.35, -56.90]
+                [shift_lat, shift_lng],
+                [round(shift_lat + 0.1, 2), round(shift_lng + 0.15, 2)],
+                [round(shift_lat - 0.2, 2), round(shift_lng + 0.25, 2)],
+                [round(shift_lat - 0.65, 2), round(shift_lng + 0.05, 2)],
+                [round(shift_lat - 0.45, 2), round(shift_lng - 0.2, 2)]
             ]
         ],
         "hazardRadius": 5.5
@@ -243,7 +250,7 @@ def simulate_iceberg_endpoint():
     
     return jsonify({
         "status": "success",
-        "message": "SAR orbit pass simulated. Iceberg IB-042 drift predicted by Random Forest Regressor.",
+        "message": f"SAR orbit pass simulated. Iceberg IB-042 drift predicted by Random Forest Regressor targeting active Route {active_route_id.upper()}.",
         "iceberg": shifted_ib,
         "drift_prediction": drift_res
     })
@@ -251,57 +258,49 @@ def simulate_iceberg_endpoint():
 @app.route("/api/reassess-route", methods=["POST"])
 def reassess_route_endpoint():
     data = request.get_json() or {}
-    vessel = data.get("vessel", {})
-    origin = data.get("origin", {"name": "King George Island Base", "lat": -62.20, "lng": -58.96})
-    destination = data.get("destination", {"name": "Polar Research Station Alpha", "lat": -63.85, "lng": -57.45})
-    icebergs = data.get("icebergs", [])
-    environment = data.get("environment", {})
+    active_route_id = data.get("active_route_id", "a")
+    vessel = data.get("vessel") if isinstance(data.get("vessel"), dict) else {}
+    origin = data.get("origin") if isinstance(data.get("origin"), dict) else {"name": "King George Island Base", "lat": -62.20, "lng": -58.96}
+    destination = data.get("destination") if isinstance(data.get("destination"), dict) else {"name": "Polar Research Station Alpha", "lat": -63.85, "lng": -57.45}
+    icebergs = data.get("icebergs") if isinstance(data.get("icebergs"), list) else []
+    environment = data.get("environment") if isinstance(data.get("environment"), dict) else {}
     
-    # Ensure IB-042 is treated as CRITICAL in risk assessment
     updated_icebergs = []
     for ib in icebergs:
         if ib["id"] == "IB-042":
             ib_copy = dict(ib)
             ib_copy["status"] = "CRITICAL"
-            ib_copy["lat"] = -62.90
-            ib_copy["lng"] = -56.70
             ib_copy["hazardRadius"] = 5.5
-            ib_copy["predictedTrajectory"] = [
-                [-62.90, -56.70],
-                [-63.10, -56.70],
-                [-63.30, -56.70],
-                [-63.50, -56.90]
-            ]
             updated_icebergs.append(ib_copy)
         else:
             updated_icebergs.append(ib)
             
-    # Generate updated routes with escalated IB-042 hazard
     routes_res = generate_routes_endpoint_logic(vessel, origin, destination, updated_icebergs, environment)
+    rec_id = "b" if active_route_id in ["a", "c"] else "a"
     
-    # Route A risk jumps due to IB-042 intersection
     for r in routes_res:
-        if r["id"] == "a":
+        if r["id"] == active_route_id:
             r["riskScore"] = 84
             r["riskCategory"] = "HIGH"
             r["icebergExposure"] = "Severe"
             r["status"] = "AVOID"
-            r["description"] = "CRITICAL EXPOSURE: IB-042 shifted trajectory directly intersects Route A corridor in Antarctic Sound."
-        elif r["id"] == "b":
+            r["description"] = f"CRITICAL EXPOSURE: IB-042 shifted trajectory directly intersects Route {active_route_id.upper()} corridor."
+        elif r["id"] == rec_id:
             r["riskScore"] = 18
             r["riskCategory"] = "LOW"
             r["icebergExposure"] = "Minimal"
             r["status"] = "RECOMMENDED"
-            r["description"] = "RECOMMENDED ALTERNATIVE: Bypasses IB-042 hazard zone by 80+ km in deep outer sea water."
+            r["description"] = f"RECOMMENDED ALTERNATIVE: Bypasses IB-042 hazard zone by 80+ km in deep outer sea water."
 
     return jsonify({
         "status": "reassessment_complete",
         "alert": {
             "active": True,
             "title": "CRITICAL NAVIGATION ADVISORY #SAR-9042",
-            "message": "IB-042 shifted trajectory directly intersects Route A corridor. Risk jumped to 84 (HIGH). Route B recommended."
+            "message": f"IB-042 shifted trajectory directly intersects Route {active_route_id.upper()} corridor. Risk jumped to 84 (HIGH). Route {rec_id.upper()} recommended."
         },
-        "routes": routes_res
+        "routes": routes_res,
+        "recommended_route_id": rec_id
     })
 
 def generate_routes_endpoint_logic(vessel, origin, destination, icebergs, environment):
