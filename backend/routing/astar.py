@@ -1,5 +1,7 @@
 import heapq
 import math
+import os
+import json
 from backend.utils.geo import haversine_distance_km, interpolate_waypoints, calculate_total_route_distance_km
 from backend.ml.risk_model import predict_navigation_risk
 
@@ -8,7 +10,28 @@ LAT_MIN = -66.0
 LAT_MAX = -61.0
 LON_MIN = -62.0
 LON_MAX = -54.0
-GRID_RES = 0.10  # ~11 km grid resolution
+GRID_RES = 0.04  # ~4.4 km SAR grid resolution
+
+# Load Synthetic Sentinel-1 SAR & Bathymetry Grid Dataset
+DATA_DIR = os.path.join(os.path.dirname(__file__), "..", "data")
+SAR_JSON_PATH = os.path.join(DATA_DIR, "antarctic_sar_grid.json")
+
+SAR_GRID = {}
+if os.path.exists(SAR_JSON_PATH):
+    try:
+        with open(SAR_JSON_PATH, "r", encoding="utf-8") as f:
+            sar_data = json.load(f)
+            SAR_GRID = sar_data.get("grid", {})
+            print(f"[SAR DATASET] Loaded {len(SAR_GRID)} high-resolution SAR nodes from antarctic_sar_grid.json")
+    except Exception as e:
+        print(f"[SAR DATASET] Error loading SAR dataset: {e}")
+
+def get_sar_node(lat: float, lon: float) -> dict:
+    """Finds nearest spatial node in the SAR dataset grid."""
+    grid_lat = round(round((lat - LAT_MIN) / GRID_RES) * GRID_RES + LAT_MIN, 3)
+    grid_lon = round(round((lon - LON_MIN) / GRID_RES) * GRID_RES + LON_MIN, 3)
+    key = f"{grid_lat:.3f}_{grid_lon:.3f}"
+    return SAR_GRID.get(key, {})
 
 def latlon_to_grid(lat: float, lon: float) -> tuple:
     r = int(round((lat - LAT_MIN) / GRID_RES))
@@ -21,13 +44,16 @@ def grid_to_latlon(r: int, c: int) -> tuple:
     return (lat, lon)
 
 def is_land(lat: float, lon: float) -> bool:
-    # Trinity Peninsula land mass
+    """Query high-resolution SAR dataset land mask."""
+    sar_node = get_sar_node(lat, lon)
+    if sar_node:
+        return sar_node.get("is_land", False)
+        
+    # Geometric fallback land mask
     if -64.30 <= lat <= -63.10 and -59.50 <= lon <= -57.10:
         return True
-    # Joinville Island group
     if -63.45 <= lat <= -63.15 and -56.30 <= lon <= -55.30:
         return True
-    # Graham Coast continental land mass
     if -65.5 <= lat <= -64.3 and -64.0 <= lon <= -58.2:
         return True
     return False
@@ -36,17 +62,21 @@ def calculate_cell_cost(lat: float, lon: float, icebergs: list, environment: dic
     if is_land(lat, lon):
         return float('inf')  # BLOCKED LAND OBSTACLE
         
-    base_cost = 1.0  # Open ocean base movement cost
+    base_cost = 1.0
+    sar_node = get_sar_node(lat, lon)
     
-    # 1. Sea Ice Cost
+    # 1. SAR Sea Ice & Backscatter Cost
     sea_ice_avg = environment.get("sea_ice_concentration_avg", 32.0)
-    if -65.2 <= lat <= -64.1 and -58.2 <= lon <= -55.6:
-        ice_conc = 82.0
-    elif -64.4 <= lat <= -63.4 and -59.5 <= lon <= -57.8:
-        ice_conc = 45.0
+    if sar_node:
+        ice_conc = sar_node.get("sea_ice_concentration_pct", sea_ice_avg)
+        sar_db = sar_node.get("sar_backscatter_db", -20.0)
+        # Higher SAR backscatter indicates bright rough ice pack
+        sar_roughness_cost = max(0.0, (sar_db - (-18.0)) * 0.5) if sar_db > -18.0 else 0.0
     else:
         ice_conc = sea_ice_avg
-    sea_ice_cost = (ice_conc / 100.0) * 8.0
+        sar_roughness_cost = 0.0
+
+    sea_ice_cost = (ice_conc / 100.0) * 8.0 + sar_roughness_cost
     
     # 2. Iceberg Hazard Cost
     iceberg_cost = 0.0
@@ -69,14 +99,22 @@ def calculate_cell_cost(lat: float, lon: float, icebergs: list, environment: dic
                 mult = 60.0 if status == "CRITICAL" else 15.0
                 iceberg_cost += mult * (1.0 - dist_to_traj / (radius + 0.1))
 
-    # 3. Weather & Ocean Cost
+    # 3. Weather & Ocean Current Cost
     wind_speed = environment.get("wind_speed_knots", 18.0)
     current_speed = environment.get("ocean_current_speed", 0.4)
     weather_cost = (wind_speed / 40.0) * 2.0 + (current_speed / 2.0) * 1.5
     
-    # 4. Vessel Constraint Cost
+    # 4. Bathymetric Keel Clearance & Vessel Constraint
     draft = vessel.get("draft", 8.2) if vessel else 8.2
-    draft_cost = (draft / 12.0) * 1.5
+    bathymetry_depth = sar_node.get("bathymetry_depth_m", 500.0) if sar_node else 500.0
+    
+    # Keel depth clearance penalty if depth < 100m
+    if bathymetry_depth < draft + 15.0:
+        bathymetry_penalty = 15.0
+    else:
+        bathymetry_penalty = 0.0
+
+    draft_cost = (draft / 12.0) * 1.5 + bathymetry_penalty
     
     return float(base_cost + sea_ice_cost + iceberg_cost + weather_cost + draft_cost)
 
@@ -144,10 +182,6 @@ def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict,
 def generate_grid_routes(vessel: dict, origin: dict, destination: dict, icebergs: list, environment: dict) -> list:
     start_pt = (origin["lat"], origin["lng"])
     end_pt = (destination["lat"], destination["lng"])
-    
-    path_a = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor=None)
-    path_b = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="east")
-    path_c = run_astar(start_pt, end_pt, icebergs, environment, vessel, bias_corridor="west")
     
     # ROUTE A — Antarctic Sound Open Ocean Channel (East of Peninsula, 100% Water)
     control_a = [
