@@ -1,6 +1,6 @@
-# POLARNAV 2.0 — Antarctic Maritime Navigation & Intelligence System
+# POLARNAV  — Antarctic Maritime Navigation & Intelligence System
 
-POLARNAV 2.0 is a decision-support platform designed for polar maritime navigation. It combines a React + Leaflet GIS frontend with a Python + Flask intelligence backend powered by `scikit-learn` Random Forest models, grid-based A* pathfinding, and Multi-Criteria Decision Analysis (MCDA).
+POLARNAV  is a decision-support platform designed for polar maritime navigation. It combines a React + Leaflet GIS frontend with a Python + Flask intelligence backend powered by `scikit-learn` Random Forest models, grid-based A* pathfinding, and Multi-Criteria Decision Analysis (MCDA).
 
 ---
 
