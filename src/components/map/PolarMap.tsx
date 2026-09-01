@@ -6,13 +6,19 @@ import type { Vessel, LocationPoint, Iceberg, CandidateRoute } from '../../types
 import { useAppState } from '../../context/StateContext';
 import { Layers, Navigation } from 'lucide-react';
 
-// Override default Leaflet icon URLs to prevent bundler asset loading issues on Vercel
-delete (L.Icon.Default.prototype as any)._getIconUrl;
-L.Icon.Default.mergeOptions({
-  iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
-  iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
-  shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
-});
+// Safe Leaflet default icon URL configuration
+try {
+  if (L && L.Icon && L.Icon.Default && L.Icon.Default.prototype) {
+    delete (L.Icon.Default.prototype as any)._getIconUrl;
+    L.Icon.Default.mergeOptions({
+      iconRetinaUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon-2x.png',
+      iconUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-icon.png',
+      shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
+    });
+  }
+} catch (e) {
+  console.warn('[POLARNAV] Leaflet icon setup warning:', e);
+}
 
 interface PolarMapProps {
   vessel: Vessel | null;
