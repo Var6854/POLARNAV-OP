@@ -8,7 +8,7 @@ LAT_MIN = -66.0
 LAT_MAX = -61.0
 LON_MIN = -62.0
 LON_MAX = -54.0
-GRID_RES = 0.05  # ~5.5 km grid cell resolution
+GRID_RES = 0.10  # ~11 km fast grid cell resolution
 
 def latlon_to_grid(lat: float, lon: float) -> tuple:
     r = int(round((lat - LAT_MIN) / GRID_RES))
@@ -108,7 +108,7 @@ def run_astar(start_pt: tuple, end_pt: tuple, icebergs: list, environment: dict,
     neighbors = [(-1, 0), (1, 0), (0, -1), (0, 1), (-1, -1), (-1, 1), (1, -1), (1, 1)]
     
     iterations = 0
-    max_iterations = 4000
+    max_iterations = 400
     
     while open_set and iterations < max_iterations:
         iterations += 1
