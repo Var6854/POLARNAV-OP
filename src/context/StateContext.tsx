@@ -19,7 +19,6 @@ import {
   INITIAL_ENVIRONMENT,
   INITIAL_TIMELINE
 } from '../data/mockData';
-import { generateCandidateRoutes } from '../engine/routingEngine';
 import {
   fetchHealth,
   generateRoutesApi,
@@ -85,7 +84,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     fetchHealth().then((health) => {
       if (health && health.status === 'online') {
         setBackendOnline(true);
-        console.log('[POLARNAV] Flask Backend Connected:', health);
+        console.log('[POLARNAV] Python Flask ML Backend Connected:', health);
       } else {
         setBackendOnline(false);
       }
@@ -120,7 +119,7 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     return () => clearInterval(driftInterval);
   }, [icebergEventTriggered]);
 
-  // Route Generation: Calls Python Flask API or local fallback
+  // Route Generation: Exclusively queries Python Flask ML API
   const fetchRoutes = useCallback(async () => {
     if (!selectedVessel || !destination) return;
     
@@ -128,15 +127,6 @@ export const StateProvider: React.FC<{ children: React.ReactNode }> = ({ childre
     if (apiRoutes && apiRoutes.length > 0) {
       setCandidateRoutes(apiRoutes);
       setBackendOnline(true);
-    } else {
-      const fallbackRoutes = generateCandidateRoutes(
-        selectedVessel,
-        origin,
-        destination,
-        icebergs,
-        environment
-      );
-      setCandidateRoutes(fallbackRoutes);
     }
   }, [selectedVessel, destination, origin, icebergs, environment]);
 
